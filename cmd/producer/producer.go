@@ -124,7 +124,7 @@ func main() {
 
 	producer, err := setupProducer()
 	if err != nil {
-		log.Fatalf("failed to setup producer: %w", err)
+		log.Fatalf("failed to setup producer: %v", err)
 	}
 	defer producer.Close()
 
@@ -135,6 +135,6 @@ func main() {
 	fmt.Printf("Kafka producer 📨 started at http://localhost%s\n", ProducerPort)
 
 	if err := router.Run(ProducerPort); err != nil {
-		log.Fatalf("failed to start producer: %w", err)
+		log.Fatalf("failed to start producer: %v", err)
 	}
 }
