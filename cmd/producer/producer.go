@@ -1,10 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
 
+	"github.com/IBM/sarama"
 	"github.com/gin-gonic/gin"
 	"github.com/machariamarigi/notify/pkg/models"
 )
@@ -36,4 +38,39 @@ func getIDFromRequest(formValue string, ctx *gin.Context) (int, error) {
 	}
 
 	return id, nil
+}
+
+// =====================KAFKA FUNCTIONS=====================
+func sendKafkaMessage(producer sarama.SyncProducer, users []models.User, ctx gin.Context, fromID, toID int) error {
+	message := ctx.PostForm("message")
+
+	fromUser, err := findUserByID(fromID, users)
+	if err != nil {
+		return err
+	}
+
+	toUser, err := findUserByID(toID, users)
+	if err != nil {
+		return err
+	}
+
+	notification := models.Notification{
+		From:    fromUser,
+		To:      toUser,
+		Message: message,
+	}
+
+	notificationJSON, err := json.Marshal(notification)
+	if err != nil {
+		return fmt.Errorf("failed to marshal notification: %w", err)
+	}
+
+	msg := &sarama.ProducerMessage{
+		Topic: KafkaTopic,
+		Key: sarama.StringEncoder(strconv.Itoa(toUser.ID)),
+		Value: sarama.StringEncoder(notificationJSON),
+	}
+
+	_, _, err = producer.SendMessage(msg)
+	return err
 }
