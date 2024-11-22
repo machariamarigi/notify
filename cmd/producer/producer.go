@@ -101,3 +101,14 @@ func sendMessageHandler(producer sarama.SyncProducer, users []models.User) gin.H
 		ctx.JSON(http.StatusOK, gin.H{"message": "Notification sent successfully"})
 	}
 }
+
+func setupProducer() (sarama.SyncProducer, error) {
+	config := sarama.NewConfig()
+	config.Producer.Return.Successes = true
+	producer, err := sarama.NewSyncProducer([]string{KafkaServerAddress}, config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create producer: %w", err)
+	}
+
+	return producer, nil
+}
