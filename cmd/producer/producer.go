@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -111,4 +112,29 @@ func setupProducer() (sarama.SyncProducer, error) {
 	}
 
 	return producer, nil
+}
+
+func main() {
+	users := []models.User{
+		{ID: 1, Name: "Gitau"},
+		{ID: 2, Name: "Mercy"},
+		{ID: 3, Name: "Wanjiku"},
+		{ID: 4, Name: "Macharia"},
+	}
+
+	producer, err := setupProducer()
+	if err != nil {
+		log.Fatalf("failed to setup producer: %w", err)
+	}
+	defer producer.Close()
+
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.Default()
+	router.POST("/send", sendMessageHandler(producer, users))
+
+	fmt.Printf("Kafka producer 📨 started at http://localhost%s\n", ProducerPort)
+
+	if err := router.Run(ProducerPort); err != nil {
+		log.Fatalf("failed to start producer: %w", err)
+	}
 }
