@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"strconv"
 
 	"github.com/IBM/sarama"
@@ -41,7 +42,7 @@ func getIDFromRequest(formValue string, ctx *gin.Context) (int, error) {
 }
 
 // =====================KAFKA FUNCTIONS=====================
-func sendKafkaMessage(producer sarama.SyncProducer, users []models.User, ctx gin.Context, fromID, toID int) error {
+func sendKafkaMessage(producer sarama.SyncProducer, users []models.User, ctx *gin.Context, fromID, toID int) error {
 	message := ctx.PostForm("message")
 
 	fromUser, err := findUserByID(fromID, users)
@@ -67,10 +68,36 @@ func sendKafkaMessage(producer sarama.SyncProducer, users []models.User, ctx gin
 
 	msg := &sarama.ProducerMessage{
 		Topic: KafkaTopic,
-		Key: sarama.StringEncoder(strconv.Itoa(toUser.ID)),
+		Key:   sarama.StringEncoder(strconv.Itoa(toUser.ID)),
 		Value: sarama.StringEncoder(notificationJSON),
 	}
 
 	_, _, err = producer.SendMessage(msg)
 	return err
+}
+
+func sendMessageHandler(producer sarama.SyncProducer, users []models.User) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		fromID, err := getIDFromRequest("fromID", ctx)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		}
+
+		toID, err := getIDFromRequest("toID", ctx)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		}
+
+		err = sendKafkaMessage(producer, users, ctx, fromID, toID)
+		if errors.Is(err, ErrUserNotFoundInProducer) {
+			ctx.JSON(http.StatusNotFound, gin.H{"message": "User not found"})
+			return
+		}
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+			return
+		}
+
+		ctx.JSON(http.StatusOK, gin.H{"message": "Notification sent successfully"})
+	}
 }
