@@ -40,3 +40,9 @@ func (ns *NotificationStore) Add(userID string, notification models.Notification
 	defer ns.mu.Unlock()
 	ns.data[userID] = append(ns.data[userID], notification)
 }
+
+func (ns *NotificationStore) Get(userID string) []models.Notification {
+	ns.mu.RLock()
+	defer ns.mu.RUnlock()
+	return ns.data[userID]
+}
