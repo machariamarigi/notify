@@ -2,8 +2,10 @@ package main
 
 import (
 	"errors"
+	"sync"
 
 	"github.com/gin-gonic/gin"
+	"github.com/machariamarigi/notify/pkg/models"
 )
 
 const (
@@ -25,4 +27,16 @@ func getUserIDFromRequest(ctx *gin.Context) (string, error) {
 	return userID, nil
 }
 
+// ===================NOTIFICATION STORAGE====================
+type UserNotifications map[string][]models.Notification
 
+type NotificationStore struct {
+	data UserNotifications
+	mu   sync.RWMutex
+}
+
+func (ns *NotificationStore) Add(userID string, notification models.Notification) {
+	ns.mu.Lock()
+	defer ns.mu.Unlock()
+	ns.data[userID] = append(ns.data[userID], notification)
+}
