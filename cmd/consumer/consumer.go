@@ -4,6 +4,7 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/IBM/sarama"
 	"github.com/gin-gonic/gin"
 	"github.com/machariamarigi/notify/pkg/models"
 )
@@ -46,3 +47,11 @@ func (ns *NotificationStore) Get(userID string) []models.Notification {
 	defer ns.mu.RUnlock()
 	return ns.data[userID]
 }
+
+// =====================KAFKA FUNCTIONS=====================
+type Consumer struct {
+	store *NotificationStore
+}
+
+func (*Consumer) Setup(sarama.ConsumerGroupSession) error { return nil }
+func (*Consumer) Cleanup(sarama.ConsumerGroupSession) error { return nil }
