@@ -122,11 +122,33 @@ func handleNotifications(ctx *gin.Context, store *NotificationStore) {
 	notes := store.Get(userId)
 	if len(notes) == 0 {
 		ctx.JSON(http.StatusOK, gin.H{
-			"message": "no notifications found for user",
+			"message":       "no notifications found for user",
 			"notifications": []models.Notification{},
 		})
 		return
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{"notifications": notes})
+}
+
+func main() {
+	store := &NotificationStore{
+		data: make(UserNotifications),
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go setUpConsumerGroup(ctx, store)
+	defer cancel()
+
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.Default()
+	router.GET("/notifications/:userID", func(ctx *gin.Context) {
+		handleNotifications(ctx, store)
+	})
+
+	fmt.Printf("Kafka CONSUMER (Group %s) 👥📥 "+"started at http://localhost%s\n", ConsumerGroup, ConsumerPort)
+
+	if err := router.Run(ConsumerPort); err != nil {
+		log.Printf("failed to run the server: %v", err)
+	}
 }
