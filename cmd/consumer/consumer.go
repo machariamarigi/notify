@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -85,6 +86,30 @@ func initializeConsumerGroup() (sarama.ConsumerGroup, error) {
 	}
 
 	return consumerGroup, nil
+}
+
+func setUpConsumerGroup(ctx context.Context, store *NotificationStore) {
+	consumerGroup, err := initializeConsumerGroup()
+
+	if err != nil {
+		log.Printf("error initializing consumer group: %v", err)
+	}
+	defer consumerGroup.Close()
+
+	consumer := &Consumer{
+		store: store,
+	}
+
+	for {
+		err := consumerGroup.Consume(ctx, []string{ConsumerTopic}, consumer)
+		if err != nil {
+			log.Printf("error consuming messages: %v", err)
+		}
+
+		if ctx.Err() != nil {
+			return
+		}
+	}
 }
 
 func handleNotifications(ctx *gin.Context, store *NotificationStore) {
