@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"sync"
 
 	"github.com/IBM/sarama"
@@ -84,4 +85,23 @@ func initializeConsumerGroup() (sarama.ConsumerGroup, error) {
 	}
 
 	return consumerGroup, nil
+}
+
+func handleNotifications(ctx *gin.Context, store *NotificationStore) {
+	userId, err := getUserIDFromRequest(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	notes := store.Get(userId)
+	if len(notes) == 0 {
+		ctx.JSON(http.StatusOK, gin.H{
+			"message": "no notifications found for user",
+			"notifications": []models.Notification{},
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"notifications": notes})
 }
