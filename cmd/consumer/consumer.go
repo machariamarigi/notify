@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
+	"log"
 	"sync"
 
 	"github.com/IBM/sarama"
@@ -53,5 +55,21 @@ type Consumer struct {
 	store *NotificationStore
 }
 
-func (*Consumer) Setup(sarama.ConsumerGroupSession) error { return nil }
+func (*Consumer) Setup(sarama.ConsumerGroupSession) error   { return nil }
 func (*Consumer) Cleanup(sarama.ConsumerGroupSession) error { return nil }
+
+func (consumer *Consumer) ConsumeClaim(sess sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
+	for msg := range claim.Messages() {
+		userID := string(msg.Key)
+		var notification models.Notification
+		err := json.Unmarshal(msg.Value, &notification)
+		if err != nil {
+			log.Printf("error unmarshalling message: %v", err)
+			continue
+		}
+		consumer.store.Add(userID, notification)
+		sess.MarkMessage(msg, "")
+	}
+
+	return nil
+}
